@@ -272,6 +272,105 @@ def save_out_transaction(
 
     return no_doc
 
+def save_in_transaction(
+    draft,
+    lokasi,
+    status,
+    username,
+    telegram_id
+):
+
+    spreadsheet = client.open_by_key(
+        SPREADSHEET_ID
+    )
+
+    sheet_in = spreadsheet.worksheet(
+        "IN"
+    )
+
+    sheet_trx = spreadsheet.worksheet(
+        "TRANSACTION"
+    )
+
+    now = datetime.now()
+
+    tanggal = now.strftime(
+        "%Y-%m-%d"
+    )
+
+    jam = now.strftime(
+        "%H:%M:%S"
+    )
+
+    no_doc = (
+        f"IN-{now.strftime('%Y%m%d-%H%M%S')}"
+    )
+
+    no_awal = len(
+        sheet_in.get_all_values()
+    ) - 1
+
+    for i, item in enumerate(
+        draft,
+        start=1
+    ):
+
+        no = no_awal + i
+
+        item_master = get_item_by_code(
+            item["kode"]
+        )
+
+        if item_master:
+
+            nama_barang = (
+                item_master["nama"]
+            )
+
+        else:
+
+            nama_barang = ""
+    
+        row_in = [
+            no,
+            tanggal,
+            jam,
+            no_doc,
+            lokasi,
+            item["kode"],
+            nama_barang,
+            item["qty"],
+            status,
+            username,
+            telegram_id
+        ]
+
+        sheet_in.append_row(
+            row_in
+        )
+
+        row_trx = [
+            tanggal,
+            jam,
+            no_doc,
+            lokasi,
+            item["kode"],
+            nama_barang,
+            item["qty"],
+            0,
+            "IN",
+            +item["qty"],
+            status,
+            username,
+            telegram_id
+        ]
+
+        sheet_trx.append_row(
+            row_trx
+        )
+
+    return no_doc
+
     print("=== HASIL STOCK ===")
     print(stock)
 
