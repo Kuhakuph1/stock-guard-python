@@ -337,6 +337,18 @@ async def menu_handler(
             ["⬅️ Kembali"]
         )
 
+        if user_data.get(
+            "trx_type"
+        ) == "IN":
+
+            user_data["menu"] = "IN_BRAND"
+
+        elif user_data.get(
+            "trx_type"
+        ) == "OUT":
+
+            user_data["menu"] = "OUT_BRAND"
+        
         await update.message.reply_text(
             f"Pilih Merk ({lokasi})",
             reply_markup=ReplyKeyboardMarkup(
@@ -380,6 +392,18 @@ async def menu_handler(
         keyboard.append(
             ["⬅️ Kembali"]
         )
+
+        if user_data.get(
+            "trx_type"
+        ) == "IN":
+
+            user_data["menu"] = "IN_TYPE"
+
+        elif user_data.get(
+            "trx_type"
+        ) == "OUT":
+
+            user_data["menu"] = "OUT_TYPE"        
 
         await update.message.reply_text(
             f"Pilih Jenis ({text})",
@@ -437,6 +461,8 @@ async def menu_handler(
                 ["⬅️ Kembali"]
             )
 
+            user_data["menu"] = "OUT_ITEM"
+
             await update.message.reply_text(
                 f"Pilih Barang ({jenis})",
                 reply_markup=ReplyKeyboardMarkup(
@@ -471,6 +497,8 @@ async def menu_handler(
             keyboard.append(
                 ["⬅️ Kembali"]
             )
+
+            user_data["menu"] = "IN_ITEM"
 
             await update.message.reply_text(
                 f"Pilih Barang ({jenis})",
@@ -1811,6 +1839,172 @@ async def menu_handler(
 
             return
         
+        elif current_menu == "IN_ITEM":
+
+            brand = user_data.get(
+                "in_brand"
+            )
+
+            types = get_type_by_brand(
+                brand
+            )
+
+            keyboard = []
+
+            for i in range(
+                0,
+                len(types),
+                2
+            ):
+                keyboard.append(
+                    types[i:i+2]
+                )
+
+            keyboard.append(
+                ["⬅️ Kembali"]
+            )
+
+            user_data["menu"] = "IN_TYPE"
+
+            await update.message.reply_text(
+                f"Pilih Jenis ({brand})",
+                reply_markup=ReplyKeyboardMarkup(
+                    keyboard,
+                    resize_keyboard=True
+                )
+            )
+
+            return
+    
+        elif current_menu == "IN_TYPE":
+
+            brands = get_brand_list()
+
+            keyboard = []
+
+            for i in range(
+                0,
+                len(brands),
+                2
+            ):
+                keyboard.append(
+                    brands[i:i+2]
+                )
+
+            keyboard.append(
+                ["⬅️ Kembali"]
+            )
+
+            user_data["menu"] = "IN_BRAND"
+
+            await update.message.reply_text(
+                "Pilih Merk",
+                reply_markup=ReplyKeyboardMarkup(
+                    keyboard,
+                    resize_keyboard=True
+                )
+            )
+
+            return
+        
+        elif current_menu == "IN_BRAND":
+
+            role = get_user_role(
+                update.effective_user.id
+            )
+
+            await show_main_menu(
+                update,
+                role
+            )
+
+            return
+        
+
+        
+            return
+        
+        elif current_menu == "OUT_ITEM":
+
+            brand = user_data.get(
+                "out_brand"
+            )
+
+            types = get_type_by_brand(
+                brand
+            )
+
+            keyboard = []
+
+            for i in range(
+                0,
+                len(types),
+                2
+            ):
+                keyboard.append(
+                    types[i:i+2]
+                )
+
+            keyboard.append(
+                ["⬅️ Kembali"]
+            )
+
+            user_data["menu"] = "OUT_TYPE"
+
+            await update.message.reply_text(
+                f"Pilih Jenis ({brand})",
+                reply_markup=ReplyKeyboardMarkup(
+                    keyboard,
+                    resize_keyboard=True
+                )
+            )
+
+            return
+    
+        elif current_menu == "OUT_TYPE":
+
+            brands = get_brand_list()
+
+            keyboard = []
+
+            for i in range(
+                0,
+                len(brands),
+                2
+            ):
+                keyboard.append(
+                    brands[i:i+2]
+                )
+
+            keyboard.append(
+                ["⬅️ Kembali"]
+            )
+
+            user_data["menu"] = "OUT_BRAND"
+
+            await update.message.reply_text(
+                "Pilih Merk",
+                reply_markup=ReplyKeyboardMarkup(
+                    keyboard,
+                    resize_keyboard=True
+                )
+            )
+
+            return
+        
+        elif current_menu == "OUT_BRAND":
+
+            role = get_user_role(
+                update.effective_user.id
+            )
+
+            await show_main_menu(
+                update,
+                role
+            )
+
+            return
+
         elif current_menu == "STOCK_DETAIL":
 
             role = get_user_role(
