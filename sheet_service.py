@@ -21,6 +21,24 @@ TRANSACTION_CACHE = None
 USER_ROLE_CACHE = None
 STOCK_CACHE = None
 
+def refresh_cache():
+
+    global SETTING_CACHE
+    global MASTER_CACHE
+    global TRANSACTION_CACHE
+    global USER_ROLE_CACHE
+    global STOCK_CACHE
+
+    SETTING_CACHE = None
+    MASTER_CACHE = None
+    TRANSACTION_CACHE = None
+    USER_ROLE_CACHE = None
+    STOCK_CACHE = None
+
+    print(
+        "CACHE REFRESHED"
+    )
+
 def get_setting_full():
 
     global SETTING_CACHE
@@ -95,6 +113,12 @@ def add_user_role(
 
 def get_stock_data():
 
+    global STOCK_CACHE
+
+    if STOCK_CACHE:
+
+        return STOCK_CACHE
+
     spreadsheet = client.open_by_key(
         SPREADSHEET_ID
     )
@@ -103,9 +127,19 @@ def get_stock_data():
         "STOCK"
     )
 
-    return sheet.get_all_values()
+    STOCK_CACHE = (
+        sheet.get_all_values()
+    )
+
+    return STOCK_CACHE
 
 def get_setting_data():
+
+    global SETTING_CACHE
+
+    if SETTING_CACHE:
+
+        return SETTING_CACHE
 
     spreadsheet = client.open_by_key(
         SPREADSHEET_ID
@@ -115,13 +149,18 @@ def get_setting_data():
         "Setting"
     )
 
-    return sheet.get_all_values()
+    SETTING_CACHE = (
+        sheet.get_all_values()
+    )
+
+    return SETTING_CACHE
 
 def get_master_data():
 
     global MASTER_CACHE
 
     if MASTER_CACHE:
+
         return MASTER_CACHE
 
     spreadsheet = client.open_by_key(
@@ -143,6 +182,7 @@ def get_transaction_data():
     global TRANSACTION_CACHE
 
     if TRANSACTION_CACHE:
+
         return TRANSACTION_CACHE
 
     spreadsheet = client.open_by_key(

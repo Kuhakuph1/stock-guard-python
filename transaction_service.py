@@ -10,6 +10,11 @@ from master_service import (
     get_items_by_brand_type,
     get_item_by_code
 )
+
+from sheet_service import (
+    refresh_cache
+)
+
 from datetime import datetime
 
 def get_brand_summary(
@@ -173,6 +178,110 @@ def get_stock_summary():
 
     return stock
 
+def get_stock_by_code(
+    lokasi,
+    kode
+):
+
+    stock_data = get_stock_data()
+
+    for row in stock_data[2:]:
+
+        if len(row) < 7:
+            continue
+
+        if row[3] != kode:
+            continue
+
+        try:
+
+            if lokasi == "Gudang":
+                return int(row[5])
+
+            else:
+                return int(row[6])
+
+        except:
+
+            return 0
+
+    return 0
+
+def get_current_draft(user_data):
+
+    trx_type = user_data.get(
+        "trx_type"
+    )
+
+    if trx_type == "OUT":
+
+        return user_data.get(
+            "draft_out",
+            []
+        )
+
+    return user_data.get(
+        "draft_in",
+        []
+    )
+
+def save_current_draft(
+    user_data,
+    draft
+):
+
+    trx_type = user_data.get(
+        "trx_type"
+    )
+
+    if trx_type == "OUT":
+
+        user_data[
+            "draft_out"
+        ] = draft
+
+    else:
+
+        user_data[
+            "draft_in"
+        ] = draft
+
+def get_current_brand(
+    user_data
+):
+
+    trx_type = user_data.get(
+        "trx_type"
+    )
+
+    if trx_type == "OUT":
+
+        return user_data.get(
+            "out_brand"
+        )
+
+    return user_data.get(
+        "brand"
+    )
+
+def get_current_lokasi(
+    user_data
+):
+
+    trx_type = user_data.get(
+        "trx_type"
+    )
+
+    if trx_type == "OUT":
+
+        return user_data.get(
+            "out_lokasi"
+        )
+
+    return user_data.get(
+        "lokasi"
+    )
+
 def save_out_transaction(
     draft,
     lokasi,
@@ -233,7 +342,7 @@ def save_out_transaction(
             nama_barang = ""
     
         row_out = [
-            no,
+            "",
             tanggal,
             jam,
             no_doc,
@@ -251,6 +360,7 @@ def save_out_transaction(
         )
 
         row_trx = [
+            "",
             tanggal,
             jam,
             no_doc,
@@ -269,7 +379,7 @@ def save_out_transaction(
         sheet_trx.append_row(
             row_trx
         )
-
+    refresh_cache()
     return no_doc
 
 def save_in_transaction(
@@ -332,7 +442,7 @@ def save_in_transaction(
             nama_barang = ""
     
         row_in = [
-            no,
+            "",
             tanggal,
             jam,
             no_doc,
@@ -350,6 +460,7 @@ def save_in_transaction(
         )
 
         row_trx = [
+            "",
             tanggal,
             jam,
             no_doc,
@@ -369,9 +480,7 @@ def save_in_transaction(
             row_trx
         )
 
+    refresh_cache()
     return no_doc
-
-    print("=== HASIL STOCK ===")
-    print(stock)
 
     return stock

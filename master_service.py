@@ -9,6 +9,10 @@ def get_all_master():
 
     return data[2:]
 
+    print(data[0])
+    print(data[1])
+    print(data[2])
+    print(data[3])
 
 def get_brand_list():
 

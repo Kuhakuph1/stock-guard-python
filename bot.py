@@ -13,13 +13,20 @@ from telegram.ext import (
 
 from config import TOKEN
 
+from sheet_service import (
+    refresh_cache
+)
+
 from transaction_service import (
     get_stock_summary,
     get_brand_summary,
     get_stock_by_location_and_brand,
     get_stock_by_location_brand_type,
     save_out_transaction,
-    save_in_transaction
+    save_in_transaction,
+    get_current_draft,
+    save_current_draft,
+    get_stock_by_code
 )
 
 from master_service import (
@@ -29,7 +36,8 @@ from master_service import (
     get_empty_stock,
     get_type_by_brand,
     get_master_report,
-    get_items_by_brand_type
+    get_items_by_brand_type,
+    get_item_by_code
 )
 
 from report_service import (
@@ -783,7 +791,8 @@ async def menu_handler(
             return
 
         items = get_master_report()
-
+        
+        print(items[0])
         excel_file = (
             create_master_stock_excel(
                 items
@@ -819,7 +828,11 @@ async def menu_handler(
     # Stok keluar Qty
     # ==========================
 
-    elif text.startswith("CH-"):
+    elif (
+    get_item_by_code(
+        text
+    ) is not None
+    ):
 
         user_data[
             "selected_item"
@@ -848,7 +861,7 @@ async def menu_handler(
     elif user_data.get(
         "mode"
     ) == "OUT_QTY":
-        
+
         try:
 
             qty = int(text)
@@ -861,10 +874,58 @@ async def menu_handler(
 
             return
 
+        stock_available = get_stock_by_code(
+            user_data.get(
+                "out_lokasi"
+            ),
+            user_data.get(
+                "selected_item"
+            )
+        )
+
         draft = user_data.get(
             "draft_out",
             []
         )
+
+        draft_qty = 0
+
+        for item in draft:
+
+            if item["kode"] == user_data.get(
+                "selected_item"
+            ):
+
+                draft_qty += item["qty"]
+
+        if qty + draft_qty > stock_available:
+
+            keyboard = [
+                ["➕ Tambah Barang"],
+                ["➖ Hapus Barang"],                
+                ["📋 Lihat Draft OUT"],
+                ["✅ Submit OUT"],
+                ["❌ Batal"]
+            ]
+
+            user_data["mode"] = ""
+
+            await update.message.reply_text(
+                (
+                    "❌ Stock tidak mencukupi\n\n"
+                    f"Tersedia : {stock_available}\n"
+                    f"Sudah di draft : {draft_qty}\n"
+                    f"Diminta : {qty}"
+                ),
+                reply_markup=ReplyKeyboardMarkup(
+                    keyboard,
+                    resize_keyboard=True
+                )
+            )
+
+            return
+
+    # BARU LANJUT KE draft.append(...)
 
         draft.append({
 
@@ -901,8 +962,9 @@ async def menu_handler(
 
         keyboard = [
         ["➕ Tambah Barang"],
-        ["📋 Lihat Draft"],
-        ["✅ Submit"],
+        ["➖ Hapus Barang"],
+        ["📋 Lihat Draft OUT"],
+        ["✅ Submit OUT"],
         ["❌ Batal"]
         ]
 
@@ -973,6 +1035,7 @@ async def menu_handler(
 
         keyboard = [
             ["➕ Tambah Barang"],
+            ["➖ Hapus Barang"],
             ["📋 Lihat Draft IN"],
             ["✅ Submit IN"],
             ["❌ Batal"]
@@ -989,8 +1052,63 @@ async def menu_handler(
                 resize_keyboard=True
             )
         )
+    
 
-    elif text == "📋 Lihat Draft":
+    elif (
+        user_data.get(
+            "mode"
+        ) == "DELETE_DRAFT"
+        and text.startswith("🗑")
+    ):
+
+        try:
+
+            index = int(
+                text.replace(
+                    "🗑 ",
+                    ""
+                )
+            ) - 1
+
+        except:
+
+            return
+
+        draft = get_current_draft(
+            user_data
+        )
+
+        if (
+            index < 0
+            or
+            index >= len(draft)
+        ):
+
+            return
+
+        deleted = draft.pop(
+            index
+        )
+
+        save_current_draft(
+            user_data,
+            draft
+        )
+
+        user_data[
+            "mode"
+        ] = ""
+
+        await update.message.reply_text(
+            (
+                "✅ Draft dihapus\n\n"
+                f"{deleted['kode']}\n"
+                f"Qty : {deleted['qty']}"
+            )
+        )
+
+
+    elif text == "📋 Lihat Draft OUT":
 
         draft = user_data.get(
             "draft_out",
@@ -1058,7 +1176,7 @@ async def menu_handler(
             message
         )
 
-    elif text == "✅ Submit":
+    elif text == "✅ Submit OUT":
 
         draft = user_data.get(
             "draft_out",
@@ -1127,7 +1245,7 @@ async def menu_handler(
         user_data["out_status"] = status
 
         keyboard = [
-            ["✅ Approve"],
+            ["✅ Approve OUT"],
             ["❌ Batal"]
         ]
 
@@ -1235,7 +1353,7 @@ async def menu_handler(
                 )
             )
 
-    elif text == "✅ Approve":
+    elif text == "✅ Approve OUT":
         status = user_data.get(
            "out_status",
             ""
@@ -1313,23 +1431,20 @@ async def menu_handler(
             update.effective_user.id
         )
 
-        await show_main_menu(
-            update,
-            role
-)
-
         await update.message.reply_text(
-            (
+            
                 "✅ TRANSAKSI BERHASIL\n\n"
                 f"No Dokumen : {no_doc}\n"
                 f"Status : {status}\n"
                 f"Jumlah Item : {total_item}"
-            ),
-            reply_markup=ReplyKeyboardMarkup(
-                keyboard,
-                resize_keyboard=True
             )
+
+        await show_main_menu(
+            update,
+            role
         )
+        
+
     elif text == "✅ Approve IN":
 
         status = user_data.get(
@@ -1423,27 +1538,62 @@ async def menu_handler(
                 f"Jumlah Item : {total_item}"
             )
         )
+    elif text == "➖ Hapus Barang":
 
+        draft = get_current_draft(
+            user_data
+        )
+
+        if not draft:
+
+            await update.message.reply_text(
+                "Draft kosong"
+            )
+
+            return
+
+        keyboard = []
+
+        for i, item in enumerate(
+            draft,
+            start=1
+        ):
+
+            keyboard.append(
+                [f"🗑 {i}"]
+            )
+
+        keyboard.append(
+            ["⬅️ Kembali"]
+        )
+
+        user_data[
+            "mode"
+        ] = "DELETE_DRAFT"
+
+        user_data[
+            "menu"
+        ] = "DRAFT_MENU"
+        await update.message.reply_text(
+            "Pilih item yang akan dihapus",
+            reply_markup=ReplyKeyboardMarkup(
+                keyboard,
+                resize_keyboard=True
+            )
+        )
     elif text == "➕ Tambah Barang":
-        print("TOMBOL TAMBAH BARANG")
-        print("TEXT =", repr(text))
-        brand = user_data.get(
-            "out_brand"
-        )
 
-        types = get_type_by_brand(
-            brand
-        )
+        brands = get_brand_list()
 
         keyboard = []
 
         for i in range(
             0,
-            len(types),
+            len(brands),
             2
         ):
             keyboard.append(
-                types[i:i+2]
+                brands[i:i+2]
             )
 
         keyboard.append(
@@ -1455,13 +1605,12 @@ async def menu_handler(
         )
 
         await update.message.reply_text(
-            f"Pilih Jenis ({brand})",
+            "Pilih Merk",
             reply_markup=ReplyKeyboardMarkup(
                 keyboard,
                 resize_keyboard=True
             )
         )
-
     elif text == "❌ Batal":
 
         user_data.pop(
@@ -1606,7 +1755,7 @@ async def menu_handler(
         await show_main_menu(
             update,
             role
-)
+        ) 
         return
     
     elif text == "⬅️ Kembali":
@@ -1617,7 +1766,52 @@ async def menu_handler(
                 ""
             )
         )
-        if current_menu == "STOCK_DETAIL":
+        if user_data.get(
+            "menu"
+        ) == "DRAFT_MENU":
+
+            trx_type = user_data.get(
+                "trx_type"
+            )
+
+            submit_text = (
+                "✅ Submit"
+            )
+
+            if trx_type == "IN":
+
+                keyboard = [
+                    ["➕ Tambah Barang"],
+                    ["➖ Hapus Barang"],
+                    ["📋 Lihat Draft IN"],
+                    ["✅ Submit IN"],
+                    ["❌ Batal"]
+                ]
+
+            else:
+
+                keyboard = [
+                    ["➕ Tambah Barang"],
+                    ["➖ Hapus Barang"],
+                    ["📋 Lihat Draft OUT"],
+                    ["✅ Submit OUT"],
+                    ["❌ Batal"]
+                ]
+
+            user_data["mode"] = ""
+            user_data["menu"] = ""
+
+            await update.message.reply_text(
+                "Menu Draft",
+                reply_markup=ReplyKeyboardMarkup(
+                    keyboard,
+                    resize_keyboard=True
+                )
+            )
+
+            return
+        
+        elif current_menu == "STOCK_DETAIL":
 
             role = get_user_role(
                 update.effective_user.id
