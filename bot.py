@@ -105,36 +105,53 @@ async def show_main_menu(
         )
     )
 
+import time
+
 async def start(
     update: Update,
     context: ContextTypes.DEFAULT_TYPE
 ):
 
+    start_time = time.time()
+
+    user_id = (
+        update.effective_user.id
+    )
+
     role = get_user_role(
-    update.effective_user.id
+        user_id
     )
-    if role == "ADMIN":
 
-        keyboard = main_menu(role)
-
-    elif role == "OPERATOR":
-
-        keyboard = main_menu(role)
-
-    else:
-
-        keyboard = main_menu(role)
-   
-    reply_markup = ReplyKeyboardMarkup(
-        keyboard,
-        resize_keyboard=True
+    print(
+        "GET ROLE =",
+        round(
+            time.time() - start_time,
+            2
+        ),
+        "sec"
     )
-    
+
+    keyboard = main_menu(
+        role
+    )
+
     await update.message.reply_text(
-        f"🚀 Stock Guard Aktif \nRole : {role}",
-        reply_markup=reply_markup
+        f"🚀 Stock Guard Aktif\n"
+        f"Role : {role}",
+        reply_markup=ReplyKeyboardMarkup(
+            keyboard,
+            resize_keyboard=True
+        )
     )
 
+    print(
+        "TOTAL START =",
+        round(
+            time.time() - start_time,
+            2
+        ),
+        "sec"
+    )
 
 async def stock(
     update: Update,
