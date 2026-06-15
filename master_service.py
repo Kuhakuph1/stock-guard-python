@@ -49,10 +49,6 @@ def get_type_by_brand(brand):
         merk = row[5].strip()
         jenis = row[6].strip()
 
-        print(
-            f"MERK='{merk}' | JENIS='{jenis}'"
-        )
-
         if merk == brand:
             result.append(jenis)
     
@@ -65,8 +61,6 @@ jenis
 ):
 
     data = get_all_master()
-    print("CONTOH BARIS MASTER")
-    print(data[2])
     items = []
 
     for row in data:

@@ -13,6 +13,22 @@ from telegram.ext import (
 
 from config import TOKEN
 
+from menu_helper import (
+    main_menu,
+    location_menu,
+    stock_location_menu,
+    draft_menu,
+    approve_menu
+)
+
+from state_helper import (
+    set_menu,
+    set_mode,
+    clear_mode,
+    clear_transaction,
+    goto_menu
+)
+
 from sheet_service import (
     refresh_cache
 )
@@ -74,36 +90,15 @@ async def show_main_menu(
     role
 ):
 
-    if role == "ADMIN":
-
-        keyboard = [
-            ["📦 Stock", "📥 Barang Masuk"],
-            ["📤 Barang Keluar", "⚠ Low Stock"],
-            ["📈 Over Stock", "❌ Empty Stock"],
-            ["📊 Stock Report"],
-            ["👥 User Management"]
-        ]
-
-    elif role == "OPERATOR":
-
-        keyboard = [
-            ["📦 Stock", "📥 Barang Masuk"],
-            ["📤 Barang Keluar", "⚠ Low Stock"],
-            ["📈 Over Stock", "❌ Empty Stock"],
-            ["📊 Stock Report"]
-        ]
-
-    else:
-
-        keyboard = [
-            ["📦 Stock"],
-            ["⚠ Low Stock"],
-            ["📈 Over Stock"],
-            ["❌ Empty Stock"]
-        ]
+    keyboard = main_menu(
+        role
+    )
 
     await update.message.reply_text(
-        "🏠 Menu Utama",
+        (
+            "🚀 Stock Guard Aktif\n"
+            f"Role : {role}"
+        ),
         reply_markup=ReplyKeyboardMarkup(
             keyboard,
             resize_keyboard=True
@@ -120,31 +115,15 @@ async def start(
     )
     if role == "ADMIN":
 
-        keyboard = [
-        ["📦 Stock", "📥 Barang Masuk"],
-        ["📤 Barang Keluar", "⚠ Low Stock"],
-        ["📈 Over Stock", "❌ Empty Stock"],
-        ["📊 Stock Report"],
-        ["👥 User Management"]
-        ]
+        keyboard = main_menu(role)
 
     elif role == "OPERATOR":
 
-        keyboard = [
-        ["📦 Stock", "📥 Barang Masuk"],
-        ["📤 Barang Keluar", "⚠ Low Stock"],
-        ["📈 Over Stock", "❌ Empty Stock"],
-        ["📊 Stock Report"]
-        ]
+        keyboard = main_menu(role)
 
     else:
 
-        keyboard = [
-            ["📦 Stock"],
-            ["⚠ Low Stock"],
-            ["📈 Over Stock"],
-            ["❌ Empty Stock"]
-        ]
+        keyboard = main_menu(role)
    
     reply_markup = ReplyKeyboardMarkup(
         keyboard,
@@ -204,6 +183,7 @@ async def menu_handler(
     context: ContextTypes.DEFAULT_TYPE
 ):
 
+
     user_id = update.effective_user.id
 
     role = get_user_role(
@@ -215,6 +195,11 @@ async def menu_handler(
     )
 
     text = update.message.text
+
+    print(
+    "TEXT =",
+    repr(text)
+    )
 
     user_data = context.user_data
 
@@ -233,14 +218,13 @@ async def menu_handler(
             )
 
             return
-        user_data["menu"] = "OUT"
+        goto_menu(
+            user_data,
+            "OUT"
+        )
         user_data["trx_type"] = "OUT"
 
-        keyboard = [
-            ["🏢 Gudang"],
-            ["🏪 Toko"],
-            ["⬅️ Kembali"]
-        ]
+        keyboard = location_menu()
 
         await update.message.reply_text(
             "Pilih Lokasi Barang Keluar",
@@ -262,14 +246,14 @@ async def menu_handler(
 
             return
 
-        user_data["menu"] = "IN"
+        goto_menu(
+            user_data,
+            "IN"
+        )
+
         user_data["trx_type"] = "IN"
 
-        keyboard = [
-            ["🏢 Gudang"],
-            ["🏪 Toko"],
-            ["⬅️ Kembali"]
-        ]
+        keyboard = location_menu()
 
         await update.message.reply_text(
             "Pilih Lokasi Barang Masuk",
@@ -283,11 +267,13 @@ async def menu_handler(
 
     elif text == "📦 Stock":
 
-        keyboard = [
-            ["🏢 Gudang"],
-            ["🏪 Toko"],
-            ["⬅️ Menu Utama"]
-        ]
+        goto_menu(
+            user_data,
+            "STOCK"
+        )
+
+        keyboard = stock_location_menu()
+
         await update.message.reply_text(
             "Pilih Lokasi",
             reply_markup=ReplyKeyboardMarkup(
@@ -341,14 +327,27 @@ async def menu_handler(
             "trx_type"
         ) == "IN":
 
-            user_data["menu"] = "IN_BRAND"
+            goto_menu(
+                user_data,
+                "IN_BRAND"
+            )
 
         elif user_data.get(
             "trx_type"
         ) == "OUT":
 
-            user_data["menu"] = "OUT_BRAND"
+            goto_menu(
+                user_data,
+                "OUT_BRAND"
+            )
         
+        else:
+
+            goto_menu(
+                user_data,
+                "STOCK_BRAND"
+            )
+
         await update.message.reply_text(
             f"Pilih Merk ({lokasi})",
             reply_markup=ReplyKeyboardMarkup(
@@ -397,13 +396,19 @@ async def menu_handler(
             "trx_type"
         ) == "IN":
 
-            user_data["menu"] = "IN_TYPE"
+            goto_menu(
+                user_data,
+                "IN_TYPE"
+            )
 
         elif user_data.get(
             "trx_type"
         ) == "OUT":
 
-            user_data["menu"] = "OUT_TYPE"        
+             goto_menu(
+                user_data,
+                "OUT_TYPE"
+            )      
 
         await update.message.reply_text(
             f"Pilih Jenis ({text})",
@@ -418,6 +423,7 @@ async def menu_handler(
 # ==========================
 
     elif text in get_type_by_brand(
+
         user_data.get(
             "brand",
             ""
@@ -461,7 +467,10 @@ async def menu_handler(
                 ["⬅️ Kembali"]
             )
 
-            user_data["menu"] = "OUT_ITEM"
+            goto_menu(
+                user_data,
+                "OUT_ITEM"
+            )
 
             await update.message.reply_text(
                 f"Pilih Barang ({jenis})",
@@ -498,7 +507,10 @@ async def menu_handler(
                 ["⬅️ Kembali"]
             )
 
-            user_data["menu"] = "IN_ITEM"
+            goto_menu(
+                user_data,
+                "IN_ITEM"
+            )
 
             await update.message.reply_text(
                 f"Pilih Barang ({jenis})",
@@ -569,7 +581,10 @@ async def menu_handler(
         )
         )
 
-        user_data["menu"] = "STOCK_DETAIL"
+        goto_menu(
+            user_data,
+            "STOCK_DETAIL"
+        )
 
         keyboard = [
             ["⬅️ Kembali"]
@@ -620,7 +635,11 @@ async def menu_handler(
                 f"{status} {kode}\n"
                 f"Qty : {qty}\n\n"
             )
-        user_data["menu"] = "STOCK_DETAIL"
+
+        goto_menu(
+            user_data,
+            "STOCK_DETAIL"
+        )
 
         await update.message.reply_text(
             message
@@ -650,7 +669,8 @@ async def menu_handler(
 
             return
 
-        user_data["menu"] = (
+        goto_menu(
+            user_data,
             "USER_MANAGEMENT"
         )
 
@@ -928,13 +948,11 @@ async def menu_handler(
 
         if qty + draft_qty > stock_available:
 
-            keyboard = [
-                ["➕ Tambah Barang"],
-                ["➖ Hapus Barang"],                
-                ["📋 Lihat Draft OUT"],
-                ["✅ Submit OUT"],
-                ["❌ Batal"]
-            ]
+            keyboard = draft_menu(
+                user_data.get(
+                    "trx_type"
+                )
+            )
 
             user_data["mode"] = ""
 
@@ -987,14 +1005,11 @@ async def menu_handler(
         ] = draft
 
         user_data["mode"] = ""
-
-        keyboard = [
-        ["➕ Tambah Barang"],
-        ["➖ Hapus Barang"],
-        ["📋 Lihat Draft OUT"],
-        ["✅ Submit OUT"],
-        ["❌ Batal"]
-        ]
+        keyboard = draft_menu(
+            user_data.get(
+                "trx_type"
+            )
+        )
 
         await update.message.reply_text(
             (
@@ -1061,13 +1076,11 @@ async def menu_handler(
 
         user_data["mode"] = ""
 
-        keyboard = [
-            ["➕ Tambah Barang"],
-            ["➖ Hapus Barang"],
-            ["📋 Lihat Draft IN"],
-            ["✅ Submit IN"],
-            ["❌ Batal"]
-        ]
+        keyboard = draft_menu(
+            user_data.get(
+                "trx_type"
+            )
+        )
 
         await update.message.reply_text(
             (
@@ -1243,6 +1256,7 @@ async def menu_handler(
             ["💰 PENJUALAN"],
             ["🔧 SERVICE"],
             ["↩️ RETUR"],
+            ["🔄 TRANSFER KELUAR"],
             ["❌ Batal"]
         ]
 
@@ -1259,23 +1273,28 @@ async def menu_handler(
     "🏭 PRODUKSI",
     "💰 PENJUALAN",
     "🔧 SERVICE",
-    "↩️ RETUR"
+    "↩️ RETUR",
+    "🔄 TRANSFER KELUAR"
     ]:
-
+        print("MASUK STATUS OUT")
+        print(repr(text))
+    
         status = (
         text
         .replace("🏭 ", "")
         .replace("💰 ", "")
         .replace("🔧 ", "")
         .replace("↩️ ", "")
+        .replace("🔄 ", "")
         )
 
         user_data["out_status"] = status
 
-        keyboard = [
-            ["✅ Approve OUT"],
-            ["❌ Batal"]
-        ]
+        keyboard = approve_menu(
+            user_data.get(
+                "trx_type"
+            )
+        )
 
         await update.message.reply_text(
             f"""
@@ -1362,10 +1381,11 @@ async def menu_handler(
 
             user_data["in_status"] = status
 
-            keyboard = [
-                ["✅ Approve IN"],
-                ["❌ Batal"]
-            ]
+            keyboard = approve_menu(
+                user_data.get(
+                    "trx_type"
+                )
+            )
 
             await update.message.reply_text(
                 f"""
@@ -1788,6 +1808,24 @@ async def menu_handler(
     
     elif text == "⬅️ Kembali":
 
+        print(
+        "BACK MENU =",
+        user_data.get("menu")
+        )
+
+        print(
+        "BACK MODE =",
+        user_data.get("mode")
+        )
+        
+        print(
+            "FULL USER DATA ="
+        )
+
+        print(
+            user_data
+        )
+
         current_menu = (
             user_data.get(
                 "menu",
@@ -1808,26 +1846,28 @@ async def menu_handler(
 
             if trx_type == "IN":
 
-                keyboard = [
-                    ["➕ Tambah Barang"],
-                    ["➖ Hapus Barang"],
-                    ["📋 Lihat Draft IN"],
-                    ["✅ Submit IN"],
-                    ["❌ Batal"]
-                ]
+                keyboard = draft_menu(
+                    user_data.get(
+                        "trx_type"
+                    )
+                )
 
             else:
 
-                keyboard = [
-                    ["➕ Tambah Barang"],
-                    ["➖ Hapus Barang"],
-                    ["📋 Lihat Draft OUT"],
-                    ["✅ Submit OUT"],
-                    ["❌ Batal"]
-                ]
+                keyboard = draft_menu(
+                    user_data.get(
+                        "trx_type"
+                    )
+                )
 
-            user_data["mode"] = ""
-            user_data["menu"] = ""
+            clear_mode(
+                user_data
+            )
+
+            goto_menu(
+                user_data,
+                "DRAFT_MENU"
+            )
 
             await update.message.reply_text(
                 "Menu Draft",
@@ -1864,7 +1904,10 @@ async def menu_handler(
                 ["⬅️ Kembali"]
             )
 
-            user_data["menu"] = "IN_TYPE"
+            goto_menu(
+                user_data,
+                "IN_TYPE"
+            )
 
             await update.message.reply_text(
                 f"Pilih Jenis ({brand})",
@@ -1895,7 +1938,10 @@ async def menu_handler(
                 ["⬅️ Kembali"]
             )
 
-            user_data["menu"] = "IN_BRAND"
+            goto_menu(
+                user_data,
+                "IN_BRAND"
+            )
 
             await update.message.reply_text(
                 "Pilih Merk",
@@ -1909,6 +1955,28 @@ async def menu_handler(
         
         elif current_menu == "IN_BRAND":
 
+            keyboard = location_menu()
+
+            goto_menu(
+                user_data,
+                "IN"
+            )
+
+            await update.message.reply_text(
+            "Pilih Lokasi Barang Masuk",
+            reply_markup=ReplyKeyboardMarkup(
+                keyboard,
+                resize_keyboard=True
+            )
+            )
+            return
+        
+        elif current_menu == "IN":
+
+            clear_transaction(
+                user_data
+            )
+
             role = get_user_role(
                 update.effective_user.id
             )
@@ -1919,10 +1987,7 @@ async def menu_handler(
             )
 
             return
-        
 
-        
-            return
         
         elif current_menu == "OUT_ITEM":
 
@@ -1949,7 +2014,10 @@ async def menu_handler(
                 ["⬅️ Kembali"]
             )
 
-            user_data["menu"] = "OUT_TYPE"
+            goto_menu(
+                user_data,
+                "OUT_TYPE"
+            )
 
             await update.message.reply_text(
                 f"Pilih Jenis ({brand})",
@@ -1980,7 +2048,10 @@ async def menu_handler(
                 ["⬅️ Kembali"]
             )
 
-            user_data["menu"] = "OUT_BRAND"
+            goto_menu(
+                user_data,
+                "OUT_BRAND"
+            )
 
             await update.message.reply_text(
                 "Pilih Merk",
@@ -1993,6 +2064,29 @@ async def menu_handler(
             return
         
         elif current_menu == "OUT_BRAND":
+
+            keyboard = location_menu()
+
+            goto_menu(
+                user_data,
+                "OUT"
+            )
+
+            await update.message.reply_text(
+                "Pilih Lokasi Barang Keluar",
+                reply_markup=ReplyKeyboardMarkup(
+                    keyboard,
+                    resize_keyboard=True
+                )
+            )
+
+            return
+
+        elif current_menu == "OUT":
+
+            clear_transaction(
+                user_data
+            )
 
             role = get_user_role(
                 update.effective_user.id
@@ -2007,31 +2101,108 @@ async def menu_handler(
 
         elif current_menu == "STOCK_DETAIL":
 
-            role = get_user_role(
-                update.effective_user.id
-            )
-            await show_main_menu(
-                update,
-                role
+            brand = user_data.get(
+                "brand"
             )
 
-            return
+            types = get_type_by_brand(
+                brand
+            )
 
-        elif current_menu == "OUT":
+            keyboard = []
 
-            keyboard = [
-                ["📦 Stock", "📥 Barang Masuk"],
-                ["📤 Barang Keluar", "⚠ Low Stock"],
-                ["📈 Over Stock", "❌ Empty Stock"],
-                ["📊 Stock Report"]
-            ]
+            for i in range(
+                0,
+                len(types),
+                2
+            ):
+                keyboard.append(
+                    types[i:i+2]
+                )
+
+            keyboard.append(
+                ["⬅️ Kembali"]
+            )
+
+            goto_menu(
+                user_data,
+                "STOCK_TYPE"
+            )
 
             await update.message.reply_text(
-                "🏠 Menu Utama",
+                f"Pilih Jenis ({brand})",
                 reply_markup=ReplyKeyboardMarkup(
                     keyboard,
                     resize_keyboard=True
                 )
+            )
+
+            return
+        
+        elif current_menu == "STOCK_TYPE":
+
+            brands = get_brand_list()
+
+            keyboard = []
+
+            for i in range(
+                0,
+                len(brands),
+                2
+            ):
+                keyboard.append(
+                    brands[i:i+2]
+                )
+
+            keyboard.append(
+                ["⬅️ Kembali"]
+            )
+
+            goto_menu(
+                user_data,
+                "STOCK_BRAND"
+            )
+
+            await update.message.reply_text(
+                "Pilih Merk",
+                reply_markup=ReplyKeyboardMarkup(
+                    keyboard,
+                    resize_keyboard=True
+                )
+            )
+
+            return
+
+        elif current_menu == "STOCK_BRAND":
+
+            goto_menu(
+                user_data,
+                "STOCK"
+            )
+
+            await update.message.reply_text(
+                "Pilih Lokasi",
+                reply_markup=ReplyKeyboardMarkup(
+                    stock_location_menu(),
+                    resize_keyboard=True
+                )
+            )
+
+            return
+        
+        elif current_menu == "STOCK":
+
+            clear_transaction(
+                user_data
+            )
+
+            role = get_user_role(
+                update.effective_user.id
+            )
+
+            await show_main_menu(
+                update,
+                role
             )
 
             return
@@ -2046,6 +2217,16 @@ async def menu_handler(
                 update,
                 role
             )
+
+async def error_handler(
+    update,
+    context
+):
+
+    print(
+        "ERROR :",
+        context.error
+    )
 
 def main():
 

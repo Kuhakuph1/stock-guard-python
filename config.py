@@ -1,3 +1,13 @@
-TOKEN = "8405699324:AAEMOYzBHt94qXkmnyLSxqrFzf7WbcN0bmM"
+import os
+from dotenv import load_dotenv
 
-SPREADSHEET_ID = "1aDCZ02znbKP-WD-OPj_-Q-mYeWChtoRWxGQUiPlSLyw"
+load_dotenv()
+
+TOKEN = os.getenv(
+    "BOT_TOKEN"
+)
+
+
+SPREADSHEET_ID = os.getenv(
+    "SPREADSHEET_ID"
+)
